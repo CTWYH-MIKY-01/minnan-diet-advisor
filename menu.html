@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>周食谱 · 健康饮食调理</title>
 <link rel="icon" type="image/png" href="icon.png">
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 <div class="container container-wide">
@@ -56,6 +56,29 @@
       <div id="prefBox" class="chip-group"></div>
     </div>
 
+    <div class="form-item">
+      <label>本周要求（可选）：控制某样食物一周最多出现几次</label>
+      <div id="wrQuick" class="chip-group wr-quick"></div>
+      <div id="wrList"></div>
+      <div class="wr-add-row">
+        <input type="text" id="wrKw" placeholder="食物关键词，如 豆浆 / 粥">
+        <select id="wrMeal">
+          <option value="all">不限餐次</option>
+          <option value="breakfast">仅早餐</option>
+          <option value="lunch">仅午餐</option>
+          <option value="dinner">仅晚餐</option>
+        </select>
+        <select id="wrMax">
+          <option value="0">不吃</option>
+          <option value="1" selected>限 1 次</option>
+          <option value="2">限 2 次</option>
+          <option value="3">限 3 次</option>
+        </select>
+        <button type="button" id="wrAddBtn" class="ghost wr-add-btn">添加</button>
+      </div>
+      <p class="hint">示例：「早餐豆浆限 1 次」即一周 7 天早餐里最多 1 天出现豆浆；「粥限 2 次」即全周粥类最多吃 2 餐。关键词会同时匹配菜名和食材名。</p>
+    </div>
+
     <div class="btn-row">
       <button type="button" id="genBtn">生成 / 换一套</button>
       <button type="button" id="resetBtn" class="ghost">恢复默认</button>
@@ -72,12 +95,12 @@
   <p class="gray center tiny">健康饮食调理 · 版权 © 王映华 · 养生参考，不能替代医嘱</p>
 </div>
 
-<script src="js/storage.js?v=17"></script>
-<script src="js/jieqi.js?v=17"></script>
-<script src="js/rule.js?v=17"></script>
-<script src="js/tcm.js?v=17"></script>
-<script src="js/dishes.js?v=17"></script>
-<script src="js/engine.js?v=17"></script>
-<script src="js/page-menu.js?v=17"></script>
+<script src="js/storage.js?v=21"></script>
+<script src="js/jieqi.js?v=21"></script>
+<script src="js/rule.js?v=21"></script>
+<script src="js/tcm.js?v=21"></script>
+<script src="js/dishes.js?v=21"></script>
+<script src="js/engine.js?v=21"></script>
+<script src="js/page-menu.js?v=21"></script>
 </body>
 </html>

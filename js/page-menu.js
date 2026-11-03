@@ -14,6 +14,17 @@
   let startDate = null;
   let seedRound = 0;     // 「换一套」的计数，参与随机种子
   let whoLabel = "";     // 单人版的成员称呼（全家版为空）
+  let weekRules = [];    // 本周要求：[{id, kw, meal, max}]
+
+  // 常用快捷项：一键添加（避免手动输入）
+  const WR_QUICK = [
+    { kw: "豆浆", meal: "breakfast", max: 1 },
+    { kw: "粥",   meal: "breakfast", max: 1 },
+    { kw: "牛奶", meal: "breakfast", max: 1 },
+    { kw: "面条", meal: "all",       max: 2 },
+    { kw: "米饭", meal: "all",       max: 7 },
+    { kw: "红茶", meal: "all",       max: 3 },
+  ];
 
   const el = function (id) { return document.getElementById(id); };
 
@@ -44,11 +55,121 @@
       });
     });
 
+    // 本周要求：恢复已存规则 + 渲染快捷项
+    // 首次使用（从未保存过）时给两条默认规则：豆浆、稀粥早餐各限 1 次/周，
+    // 用户可自行修改或删除（删光后不再自动补回）
+    if (localStorage.getItem("mnd_weekreq_v1") === null) {
+      saveWeekRules([
+        { id: "wr_default_1", kw: "豆浆", meal: "breakfast", max: 1 },
+        { id: "wr_default_2", kw: "粥",   meal: "breakfast", max: 1 },
+      ]);
+    }
+    weekRules = loadWeekRules();
+    renderWeekRules();
+    renderWrQuick();
+    el("wrAddBtn").onclick = addWeekRule;
+    el("wrKw").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") addWeekRule();
+    });
+
     refreshMembers();
   })();
 
   function iso(d) {
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  /* ---------- 本周要求 ---------- */
+  function ruleSame(a, b) {
+    return a.kw === b.kw && (a.meal || "all") === (b.meal || "all");
+  }
+
+  function addWeekRule(fromQuick, quickObj) {
+    // 事件绑定直接作为 onclick 时，第一参是 event 对象——必须区分：
+    // 快捷项调用规范是 addWeekRule(关键词字符串, 规则对象)
+    const isQuick = (typeof fromQuick === "string" && quickObj && quickObj.meal !== undefined);
+    let kw, meal, max;
+    if (isQuick) {
+      kw = fromQuick; meal = quickObj.meal; max = quickObj.max;
+    } else {
+      kw = (el("wrKw").value || "").trim();
+      meal = el("wrMeal").value;
+      max = Number(el("wrMax").value) || 0;
+    }
+    if (!kw) { alert("请先填写食物关键词（如 豆浆、粥）"); return; }
+
+    const one = { id: "wr_" + Date.now() + "_" + Math.floor(Math.random() * 1000), kw: kw, meal: meal, max: max };
+
+    if (weekRules.some(function (r) { return ruleSame(r, one); })) {
+      alert("已有一条「" + kw + "" + (meal === "all" ? "不限餐次" : ""+meal) + "」的规则了\n如需调整请先删旧条再添加");
+      return;
+    }
+    weekRules.push(one);
+    saveWeekRules(weekRules);
+    if (!isQuick) el("wrKw").value = "";
+    renderWeekRules();
+    renderWrQuick();
+  }
+
+  function renderWeekRules() {
+    const box = el("wrList");
+    if (!weekRules.length) {
+      box.innerHTML = "";
+      return;
+    }
+    const mealTxt = { all: "不限餐次", breakfast: "仅早餐", lunch: "仅午餐", dinner: "仅晚餐" };
+    box.innerHTML = weekRules.map(function (r) {
+      return '<div class="wr-item" data-wid="' + r.id + '">' +
+        '<span class="wr-kw">' + esc(r.kw) + '</span>' +
+        '<span class="wr-desc">' + mealTxt[r.meal || "all"] + " · 每周" +
+          (Number(r.max) === 0 ? "不出现" : "最多 " + r.max + " 次") + '</span>' +
+        '<button type="button" class="wr-del" data-wdel="' + r.id + '">删除</button>' +
+      '</div>';
+    }).join("");
+  }
+
+  function renderWrQuick() {
+    // 快捷项：已添加的置灰为「已设置」状态，点击可删除
+    const mealTxt = { all: "不限", breakfast: "早", lunch: "午", dinner: "晚" };
+    el("wrQuick").innerHTML = WR_QUICK.map(function (q) {
+      const added = weekRules.some(function (r) { return ruleSame(r, q); });
+      return '<label class="chip wr-q' + (added ? " on" : "") + '" data-qkw="' + esc(q.kw) + '">' +
+        '<input type="checkbox"' + (added ? " checked" : "") + '><span>' +
+        esc(q.kw) + " 限" + (Number(q.max) === 0 ? "不吃" : q.max) + "次/周（" + mealTxt[q.meal || "all"] + "）</span></label>";
+    }).join("");
+
+    el("wrQuick").querySelectorAll(".wr-q").forEach(function (c) {
+      c.addEventListener("change", function () {
+        const qk = c.dataset.qkw;
+        const q = WR_QUICK.find(function (x) { return x.kw === qk; });
+        if (!q) return;
+        if (c.querySelector("input").checked) {
+          addWeekRule(q.kw, q);
+        } else {
+          weekRules = weekRules.filter(function (r) { return !ruleSame(r, q); });
+          saveWeekRules(weekRules);
+          renderWeekRules();
+        }
+        renderWrQuick();
+      });
+    });
+  }
+
+  // 规则列表的删除按钮（事件委托）
+  document.addEventListener("click", function (e) {
+    const del = e.target.closest("[data-wdel]");
+    if (!del) return;
+    const wid = del.dataset.wdel;
+    weekRules = weekRules.filter(function (r) { return r.id !== wid; });
+    saveWeekRules(weekRules);
+    renderWeekRules();
+    renderWrQuick();
+  });
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
   }
 
   /* ---------- 成员下拉刷新 ---------- */
@@ -93,6 +214,10 @@
       c.querySelector("input").checked = false;
     });
     savePrefs({ likes: [], dislikes: [] });
+    weekRules = [];
+    saveWeekRules(weekRules);
+    renderWeekRules();
+    renderWrQuick();
   };
 
   function doGenerate(isNew) {
@@ -137,9 +262,13 @@
 
     if (isNew) seedRound++;
 
-    const seed = "menu|" + (prof.region || "漳州") + "|" + seedRound + "|" + likes.join(",");
+    const seed = "menu|" + (prof.region || "漳州") + "|" + seedRound + "|" + likes.join(",") +
+      "|" + weekRules.map(function (r) { return r.kw + ":" + (r.meal || "all") + ":" + r.max; }).join(";");
 
-    week = window.ENGINE.buildWeek(useMembers, startDate, { seed: seed, region: prof.region, prefs: { likes: likes } });
+    week = window.ENGINE.buildWeek(useMembers, startDate, {
+      seed: seed, region: prof.region,
+      prefs: { likes: likes }, weekRules: weekRules,
+    });
 
     render();
     el("resultBox").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -156,6 +285,16 @@
     let html = "";
 
     // 头部信息卡
+    let reqTxt = "";
+    if (week.weekRules && week.weekRules.length) {
+      const mealTxt = { all: "不限", breakfast: "早", lunch: "午", dinner: "晚" };
+      reqTxt = '<div class="hc-row"><span class="k">要求</span><span class="v">' +
+        week.weekRules.map(function (r) {
+          return esc(r.kw) + "限" + (Number(r.max) === 0 ? "不吃" : r.max + "次") +
+            "（" + mealTxt[r.meal || "all"] + "）";
+        }).join("；") + '</span></div>';
+    }
+
     html += '<div class="head-card">' +
       '<div class="hc-row"><span class="k">周期</span><span class="v">' + fmt(startDate) + ' 起 7 天</span></div>' +
       '<div class="hc-row"><span class="k">节气</span><span class="v">' + jqNow.name + '（' + jqNow.season + '季）</span></div>' +
@@ -167,6 +306,7 @@
         disAll.map(function (d) { return R.DISEASE[d] ? R.DISEASE[d].label : d; }).join("、") + '</span></div>' : '') +
       '<div class="hc-row"><span class="k">地区</span><span class="v">' +
         (week.region || "漳州") + ' · 当季食材优先</span></div>' +
+      reqTxt +
       '<div class="hc-note">选菜规则：慢病禁忌整桌不上；一道菜同时不利于两位以上家人体质的不选；单人不宜只降权不禁用。生腌刺身家里有胃寒/寒湿/胃病者一律不做。<b>点菜品名可展开做法，点「换」可单独换掉这道菜。</b></div>' +
     '</div>';
 
@@ -280,6 +420,7 @@
       region: week.region || "漳州",
       prefs: loadPrefs(),
     };
+    const wr = week.weekRules || [];
 
     let cands = window.DISHES.filter(function (d) {
       if (d.id === oldId) return false;
@@ -288,6 +429,31 @@
       if ((d.meal || []).indexOf(meal) < 0) return false;
       return window.ENGINE.dishAllowed(d, ctx);
     });
+
+    // 替换也同样遵守本周要求：不算上被换掉的那道，不能让配额超标
+    if (wr.length && cands.length) {
+      const st = {};
+      // 旧菜被换掉，它命中的规则配额随之释放
+      const oldHit = {};
+      wr.forEach(function (r, ri) {
+        const mealOk = !r.meal || r.meal === "all" || r.meal === meal;
+        if (mealOk && window.ENGINE.weekMatchKeyword(old, r.kw)) oldHit[ri] = true;
+      });
+      // 按规则逐条重数本周已用次数：不限餐次的按全周计，限餐次的只按该餐次计
+      wr.forEach(function (r, ri) {
+        if (oldHit[ri]) return;
+        week.days.forEach(function (dd) {
+          dd.menu.all.forEach(function (d) {
+            const mealOk = !r.meal || r.meal === "all" || r.meal === meal;
+            if (mealOk && window.ENGINE.weekMatchKeyword(d, r.kw)) st[ri] = (st[ri] || 0) + 1;
+          });
+        });
+      });
+      const okCands = cands.filter(function (d) {
+        return !window.ENGINE.weekRuleBlocked(d, meal, wr, st);
+      });
+      if (okCands.length) cands = okCands;
+    }
 
     // 若没有新菜，放宽为「当前餐次同角色任意菜（排除自身）」
     if (!cands.length) {
@@ -321,7 +487,8 @@
     const weeks = [];
     const prof = loadProfile();
     const likes = (loadPrefs().likes || []);
-    const seedBase = "menu|" + (prof.region || "漳州") + "|" + seedRound + "|" + likes.join(",");
+    const seedBase = "menu|" + (prof.region || "漳州") + "|" + seedRound + "|" + likes.join(",") +
+      "|" + weekRules.map(function (r) { return r.kw + ":" + (r.meal || "all") + ":" + r.max; }).join(";");
 
     for (let w = 0; w < 4; w++) {
       const ws = new Date(startDate.getTime() + w * 7 * 86400000);
@@ -334,7 +501,10 @@
         useM = [{ id: "tmp", name: "通用", tizhi: ["平和"], disease: [] }];
       }
       weeks.push(window.ENGINE.buildWeek(
-        useM, ws, { seed: seedBase + "|m" + w, region: prof.region, prefs: { likes: likes } }
+        useM, ws, {
+          seed: seedBase + "|m" + w, region: prof.region,
+          prefs: { likes: likes }, weekRules: weekRules,
+        }
       ));
     }
 
@@ -494,3 +664,4 @@
     return (d.getMonth() + 1) + "月" + d.getDate() + "日";
   }
 })();
+;

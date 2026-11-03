@@ -8,6 +8,7 @@ const K_HISTORY = "mnd_history_v2";   // 生成过的周食谱（最多 20 份�
 const K_PROFILE = "mnd_profile_v2";   // 家庭所在地区等全局设置
 const K_CART = "mnd_cart_v1";         // 食物购物车（想吃的 / 想试的）
 const K_PREFS = "mnd_prefs_v1";       // 菜品偏好（喜欢的菜系/忌口）
+const K_WEEKREQ = "mnd_weekreq_v1";   // 本周要求（某食物每周最多出现几次）
 
 /* ---------- 成员 ---------- */
 function loadMembers() {
@@ -95,6 +96,26 @@ function loadPrefs() {
   catch (e) { return { likes: [], dislikes: [] }; }
 }
 function savePrefs(p) { localStorage.setItem(K_PREFS, JSON.stringify(p)); }
+
+/* ---------- 本周要求 ----------
+   结构：[{ id, kw, meal, max }]
+     kw   关键词（匹配菜名或食材名，如"豆浆""粥"）
+     meal 餐次限制："breakfast" | "lunch" | "dinner" | "all"（不限）
+     max  每周最多次数（0 = 整周不出现）
+   说明：同一条规则只计配额上限的菜量，例如「粥限 1 次/周」指粥类整个
+   周只出现 1 餐粥——粥类里具体喝哪一碗由引擎按体质选最好的那一餐，
+   避免每天都只换名字同一种吃法。 */
+function loadWeekRules() {
+  try {
+    const list = JSON.parse(localStorage.getItem(K_WEEKREQ));
+    if (!Array.isArray(list)) return [];
+    return list.filter(function (r) { return r && r.kw; });
+  } catch (e) { return []; }
+}
+function saveWeekRules(list) {
+  list = (list || []).filter(function (r) { return r && r.kw; });
+  localStorage.setItem(K_WEEKREQ, JSON.stringify(list));
+}
 
 /* ---------- 历史方案 ---------- */
 function loadHistory() {

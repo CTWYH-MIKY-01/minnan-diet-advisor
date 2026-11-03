@@ -171,8 +171,43 @@ function pickDish(candidates, used, rand, topN, allowReuse, dayIdx) {
   return top[Math.floor(rand() * top.length)];
 }
 
+/* ---------- 本周要求：每周食物次数上限 ---------- */
+/* 规则结构：[{ kw, meal, max }]
+     kw   关键词，匹配菜名或食材名（如"豆浆""粥"）
+     meal "breakfast"|"lunch"|"dinner"|"all"（不限餐次）
+     max  每周最多次数（0=整周不吃）
+   返回 true 表示这道菜目前不能选（命中规则且本周配额已用完） */
+function weekRuleBlocked(dish, meal, rules, ruleState) {
+  if (!rules || !rules.length) return false;
+  for (let i = 0; i < rules.length; i++) {
+    const r = rules[i];
+    if (!r || !r.kw) continue;
+    // 餐次不匹配的规则不约束本菜
+    if (r.meal && r.meal !== "all" && r.meal !== meal) continue;
+    // 匹配菜名或食材名
+    const hit = dish.name.indexOf(r.kw) >= 0 ||
+      (dish.ing || []).some(function (x) { return (x.n || "").indexOf(r.kw) >= 0; });
+    if (!hit) continue;
+    // 配额已用完 → 阻止
+    if ((ruleState[i] || 0) >= (Number(r.max) || 0)) return true;
+  }
+  return false;
+}
+
+/* 菜被选中后，累加命中规则的计数 */
+function weekRuleCount(dish, meal, rules, ruleState) {
+  if (!rules || !rules.length) return;
+  rules.forEach(function (r, i) {
+    if (!r || !r.kw) return;
+    if (r.meal && r.meal !== "all" && r.meal !== meal) return;
+    const hit = dish.name.indexOf(r.kw) >= 0 ||
+      (dish.ing || []).some(function (x) { return (x.n || "").indexOf(r.kw) >= 0; });
+    if (hit) ruleState[i] = (ruleState[i] || 0) + 1;
+  });
+}
+
 /* ---------- 生成一天 ---------- */
-function buildDay(ctx, dayIdx, used, rand) {
+function buildDay(ctx, dayIdx, used, rand, ruleState) {
   const byMeal = function (meal, role) {
     return ctx.pool.filter(function (d) {
       return (d.meal || []).indexOf(meal) >= 0 && d.role === role;
@@ -182,8 +217,24 @@ function buildDay(ctx, dayIdx, used, rand) {
   function take(meal, role, topN) {
     // 主食天天吃，允许复用；其他角色尽量轮换
     const allowReuse = (role === "staple");
-    let d = pickDish(byMeal(meal, role), used, rand, topN, allowReuse, dayIdx + 1);
-    if (d) used[d.id] = dayIdx + 1;   // 记录最后出现的天序号（1 起）
+    let cands = byMeal(meal, role);
+
+    // 本周要求：先剔掉配额已用完的候选
+    if (ctx.weekRules && ctx.weekRules.length) {
+      const okCands = cands.filter(function (d) {
+        return !weekRuleBlocked(d, meal, ctx.weekRules, ruleState);
+      });
+      // 全部被剔光时降级放行，保证这一餐不空缺
+      if (okCands.length) cands = okCands;
+    }
+
+    let d = pickDish(cands, used, rand, topN, allowReuse, dayIdx + 1);
+    if (d) {
+      used[d.id] = dayIdx + 1;   // 记录最后出现的天序号（1 起）
+      if (ctx.weekRules && ctx.weekRules.length) {
+        weekRuleCount(d, meal, ctx.weekRules, ruleState);
+      }
+    }
     return d;
   }
 
@@ -223,9 +274,11 @@ function buildWeek(members, startDate, opts) {
   const diseases = mergeDisease(members);
   const region = opts.region || "漳州";
   const prefs = opts.prefs || { likes: [], dislikes: [] };
+  const weekRules = (opts.weekRules || []).filter(function (r) { return r && r.kw; });
 
   const days = [];
   const used = {};      // 菜品 id -> 最后出现的天序号（1起）
+  const ruleState = {};  // 本周要求：规则序号 -> 已出现次数
   const weekLabel = [];
 
   for (let i = 0; i < 7; i++) {
@@ -235,7 +288,7 @@ function buildWeek(members, startDate, opts) {
 
     const ctx = {
       season: season, tizhiAll: tizhiAll, diseases: diseases,
-      region: region, prefs: prefs, pool: [],
+      region: region, prefs: prefs, pool: [], weekRules: weekRules,
     };
 
     ctx.pool = window.DISHES.filter(function (dish) {
@@ -263,7 +316,7 @@ function buildWeek(members, startDate, opts) {
       );
     }
 
-    const dayMenu = buildDay(ctx, i, used, rand);
+    const dayMenu = buildDay(ctx, i, used, rand, ruleState);
 
     days.push({ date: d, jq: jq, season: season, menu: dayMenu });
     weekLabel.push({ jq: jq.name, season: season });
@@ -276,6 +329,8 @@ function buildWeek(members, startDate, opts) {
     diseases: diseases,
     region: region,
     weekLabel: weekLabel,
+    weekRules: weekRules,
+    weekRuleState: ruleState,
   };
 }
 
@@ -316,4 +371,9 @@ window.ENGINE = {
   mergeDisease: mergeDisease,
   dishAllowed: dishAllowed,
   dishScore: dishScore,
+  weekRuleBlocked: weekRuleBlocked,
+  weekMatchKeyword: function (dish, kw) {
+    return dish.name.indexOf(kw) >= 0 ||
+      (dish.ing || []).some(function (x) { return (x.n || "").indexOf(kw) >= 0; });
+  },
 };

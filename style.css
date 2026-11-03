@@ -424,7 +424,44 @@ a.link:hover{text-decoration:underline;}
   padding:6px 9px;border-radius:0 5px 5px 0;margin-bottom:5px;line-height:1.6;}
 .ac-note{font-size:12px;color:#93a3a0;line-height:1.6;padding-top:5px;border-top:1px dotted #eef2f0;}
 
+/* ---------- 本周要求（周食谱约束） ---------- */
+.wr-quick{margin-bottom:8px;}
+.wr-quick .chip span{padding:6px 11px;font-size:12.5px;}
+.wr-item{display:flex;align-items:center;gap:8px;background:#fdfaf2;
+  border:1px solid #ecd9b0;border-radius:9px;padding:8px 10px;margin-bottom:6px;}
+.wr-kw{font-size:13.5px;font-weight:600;color:#7a5a1e;flex:0 0 auto;}
+.wr-desc{font-size:12px;color:#96702a;flex:1;min-width:0;}
+.wr-del{width:auto;margin:0;padding:3px 11px;font-size:11.5px;background:#fff;
+  color:#b34a4a;border:1px solid #e8b0b0;border-radius:11px;line-height:1.7;}
+.wr-del:hover{background:#fdf4f4;}
+.wr-add-row{display:flex;gap:6px;align-items:stretch;}
+.wr-add-row input{flex:1.3;min-width:0;padding:8px 10px;font-size:14px;}
+.wr-add-row select{flex:1;min-width:0;padding:8px 6px;font-size:13px;}
+.wr-add-btn{flex:0 0 auto;width:auto;margin:0;padding:8px 15px;font-size:13.5px;}
+@media (max-width:640px){
+  .wr-add-row{flex-wrap:wrap;}
+  .wr-add-row input{flex:1 1 100%;}
+  .wr-add-row select{flex:1 1 auto;}
+  .wr-quick .chip span{padding:5px 9px;font-size:11.5px;}
+}
+
 /* ---------- 成员列表 ---------- */
 .member-list{margin-bottom:6px;}
 .member-list .empty{margin-bottom:10px;}
 .small{font-size:11.5px;}
+
+/* ---------- 移动端弹窗紧凑化 ---------- */
+@media (max-width:640px){
+  .modal-box{padding:14px 12px;max-height:86vh;}
+  .modal-head{margin-bottom:10px;font-size:15px;}
+  .modal-box label{font-size:12.5px;margin-bottom:3px;}
+  .modal-box .form-item{margin-bottom:9px;}
+  .modal-box input,.modal-box select{padding:7px 9px;font-size:14.5px;}
+  .modal-box .chip-group{gap:5px;}
+  .modal-box .chip span{padding:5px 10px;font-size:12.5px;line-height:1.5;}
+  .modal-box .hint{font-size:11px;}
+  .modal-box button{padding:9px;font-size:14.5px;margin-top:8px;}
+  .modal-foot{display:flex;gap:8px;}
+  .modal-foot button{flex:1;margin-top:8px;}
+  .modal-foot button.hidden{display:none;}
+}

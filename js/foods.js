@@ -53,6 +53,18 @@ const FOODS = [
   { id: "f012", name: "煎饼", kind: "raw", cat: "主食", nature: "平·甘", meridian: "脾、胃",
     tz: ["平和", "寒湿", "胃寒"], badTz: ["湿热", "肾阴虚"], badDis: ["hyperlipid"], season: ["四季"],
     note: "面糊油煎，香脆但油量不小。控脂者少油煎，配豆浆更均衡。", alt: "全麦卷饼" },
+  { id: "f013", name: "馒头", kind: "raw", cat: "主食", nature: "平·甘", meridian: "脾、胃",
+    tz: ["平和", "胃寒", "寒湿"], badTz: [], badDis: ["diabetes"], season: ["四季"],
+    note: "发酵面食好消化、不生湿，配蛋与蔬菜更稳血糖。控糖者选杂粮款、定量吃。", alt: "全麦馒头" },
+  { id: "f014", name: "烧麦", kind: "dish", cat: "主食", nature: "温·甘", meridian: "脾、胃",
+    tz: ["平和", "胃寒", "寒湿"], badTz: ["湿热"], badDis: ["hyperlipid", "uric"], season: ["四季"],
+    note: "糯米馅料扎实顶饱。选瘦肉香菇馅、避开重油款；趁热吃，别配浓汤，一次 3～4 个即可。", alt: "瘦肉馅烧麦" },
+  { id: "f015", name: "水饺", kind: "dish", cat: "主食", nature: "平·甘", meridian: "脾、胃",
+    tz: ["平和", "胃寒", "结节体质"], badTz: [], badDis: ["uric"], season: ["四季"],
+    note: "皮薄馅足、水煮不油腻。选白菜/香菇瘦肉馅，痛风者少虾仁馅；吃饺子不喝汤。", alt: "蒸饺" },
+  { id: "f016", name: "小笼包", kind: "dish", cat: "主食", nature: "平·甘", meridian: "脾、胃",
+    tz: ["平和", "胃寒"], badTz: ["湿热"], badDis: ["hyperlipid"], season: ["四季"],
+    note: "汤汁鲜美但内馅偏肥、容易烫口。选瘦肉馅、一次 4～5 个，趁热慢吃；脾胃弱者不配浓汤。", alt: "瘦肉馅小笼包" },
 
   /* ============ 二、蔬菜 ============ */
   { id: "f101", name: "白萝卜", kind: "raw", cat: "蔬菜", nature: "凉·辛甘", meridian: "肺、胃",
