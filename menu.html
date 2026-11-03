@@ -1,0 +1,82 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>周食谱 · 健康饮食调理</title>
+<link rel="stylesheet" href="style.css?v=16">
+</head>
+<body>
+<div class="container container-wide">
+
+  <nav class="nav">
+    <a class="nav-item" href="index.html">① 今日养生</a>
+    <a class="nav-item active" href="menu.html">② 周食谱</a>
+    <a class="nav-item" href="family.html">③ 家人与食物</a>
+  </nav>
+
+  <h2>🍲 家庭周食谱</h2>
+  <p class="sub">按节气 + 体质自动配餐 · 可多次生成 · 可单菜替换</p>
+
+  <!-- 设置区 -->
+  <div id="setupBox" class="setup-box">
+    <div class="row2">
+      <div class="form-item">
+        <label>居住地区（影响天气与当季食材）</label>
+        <select id="regionSel"></select>
+      </div>
+      <div class="form-item">
+        <label>起始日期</label>
+        <input type="date" id="startDate">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="form-item">
+        <label>用餐人数（用于用量）</label>
+        <input type="number" id="personNum" value="3" min="1" max="12">
+      </div>
+      <div class="form-item">
+        <label>版本</label>
+        <select id="modeSel">
+          <option value="family">全家版（推荐）</option>
+          <option value="single">单人版</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-item" id="singlePickWrap" style="display:none">
+      <label>单人版：选择成员</label>
+      <select id="singlePick"></select>
+    </div>
+
+    <div class="form-item">
+      <label>口味倾向（可选）</label>
+      <div id="prefBox" class="chip-group"></div>
+    </div>
+
+    <div class="btn-row">
+      <button type="button" id="genBtn">生成 / 换一套</button>
+      <button type="button" id="resetBtn" class="ghost">恢复默认</button>
+    </div>
+    <p class="hint" id="memberWarn"></p>
+  </div>
+
+  <!-- 结果区 -->
+  <div id="resultBox"></div>
+
+  <p class="tip" style="margin-top:18px">
+    本食谱仅为养生参考，<b>不能替代医生诊疗与药物</b>。有结节、慢病者请遵医嘱。
+  </p>
+  <p class="gray center tiny">健康饮食调理 · 版权 © 王映华 · 养生参考，不能替代医嘱</p>
+</div>
+
+<script src="js/storage.js?v=16"></script>
+<script src="js/jieqi.js?v=16"></script>
+<script src="js/rule.js?v=16"></script>
+<script src="js/tcm.js?v=16"></script>
+<script src="js/dishes.js?v=16"></script>
+<script src="js/engine.js?v=16"></script>
+<script src="js/page-menu.js?v=16"></script>
+</body>
+</html>
