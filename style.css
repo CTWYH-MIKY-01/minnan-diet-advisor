@@ -46,7 +46,7 @@ input:focus,select:focus{outline:none;border-color:#2c5f5a;box-shadow:0 0 0 3px 
 .tag.tz{background:#e4f0ed;color:#2c5f5a;}
 .tag.warn{background:#fdeaea;color:#b34a4a;}
 .mr-note{font-size:12px;color:#999;margin-top:3px;}
-.mr-edit{flex:0 0 auto;padding:6px 14px;font-size:13px;background:#fff;color:#2c5f5a;border:1px solid #c8ddd8;border-radius:7px;cursor:pointer;}
+.mr-edit{flex:0 0 auto;width:auto;padding:6px 14px;font-size:13px;background:#fff;color:#2c5f5a;border:1px solid #c8ddd8;border-radius:7px;cursor:pointer;}
 .mr-edit:hover{background:#eef7f5;}
 
 /* ---------- 按钮 ---------- */
