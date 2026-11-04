@@ -384,4 +384,4 @@
     if (typeof d === "string") return d;
     return (d.getMonth() + 1) + "月" + d.getDate() + "日";
   }
-})();;
+})();
