@@ -12,19 +12,19 @@
 
   const el = function (id) { return document.getElementById(id); };
   const esc = function (s) {
-    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+    return String(s == null ? "" : s).replace(/[&<>]/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
     });
   };
 
   /* ======================================================
-     一、Tab 切换
+     一、Tab 切换（含「我的菜谱」）
      ====================================================== */
   function switchFtab(name) {
     document.querySelectorAll("#foodTabs .tab").forEach(function (t) {
       t.classList.toggle("active", t.dataset.ftab === name);
     });
-    document.querySelectorAll("#ftab-lib, #ftab-cart, #ftab-analyze").forEach(function (p) {
+    document.querySelectorAll("#ftab-lib, #ftab-cart, #ftab-analyze, #ftab-custom").forEach(function (p) {
       p.classList.remove("active");
     });
     const box = el("ftab-" + name);
@@ -33,8 +33,8 @@
   document.querySelectorAll("#foodTabs .tab").forEach(function (t) {
     t.onclick = function () {
       switchFtab(t.dataset.ftab);
-      // 切到「甄选分析」时自动按当前购物车与成员重新计算，避免空白页
       if (t.dataset.ftab === "analyze") renderAnalyze();
+      if (t.dataset.ftab === "custom") renderCustomDishes();
     };
   });
 
@@ -179,12 +179,13 @@
   const KIND_TXT = { raw: "食材", dish: "成品菜", snack: "零食", drink: "饮品" };
 
   /* ---------- 食物图标 ----------
-     逐项映射（78 项全覆盖）；未命中时按分类回落，保证永远有图标 */
+     逐项映射；未命中时按分类回落，保证永远有图标 */
   const FOOD_ICON = {
     // 主食
     "小米": "🌾", "山药": "🍠", "糙米": "🌾", "白粥": "🥣", "糯米": "🍙",
-    "燕麦": "🌾", "荞麦": "🌾", "红薯": "🍠", "芋头": "🥔", "玉米": "🌽",
+    "燕麦": "🌾", "蔘麦": "🌾", "红薯": "🍠", "芋头": "🥔", "玉米": "🌽",
     "吐司": "🍞", "煎饼": "🥞", "馒头": "🍽️", "烧麦": "🥟", "水饺": "🥟", "小笼包": "🥟",
+    "馄饨": "🥟",
     // 蔬菜
     "白萝卜": "🥕", "山药（菜用）": "🍠", "冬瓜": "🥒", "丝瓜": "🥒", "苦瓜": "🥒",
     "芥蓝": "🥬", "菠菜": "🥬", "茼蒿": "🥬", "莲藕": "🪷", "韭菜": "🌿",
@@ -196,7 +197,7 @@
     // 蛋
     "鸡蛋": "🥚",
     // 水产
-    "鲈鱼": "🐟", "黄翅鱼": "🐟", "虾": "🦐", "螃蟹": "🦀",
+    "鲈鱼": "🐟", "黄翅鱼": "🐟", "虾": "🦐", "蟹蟹": "🦀",
     "海蛎（生蚝）": "🦪", "海带": "🌿", "紫菜": "🍃",
     // 豆制品
     "豆腐": "🧊", "豆浆": "🥛",
@@ -208,7 +209,8 @@
     "清蒸鲈鱼": "🐟", "白切鸡": "🍗", "沙茶面": "🍜", "卤面": "🍜", "四果汤": "🍧",
     "手抓面": "🍜", "锅边糊": "🥣", "炒米粉": "🍝", "海蛎煎": "🍳", "白灼虾": "🦐",
     "排骨汤": "🍲", "番茄炒蛋": "🍳", "清炒时蔬": "🥬", "山药排骨汤": "🍲", "姜母鸭": "🦆",
-    "寿司": "🍣",
+    "寿司": "🍣", "青椒牛肉丝": "🥩", "水煮牛肉": "🌶️", "萝卜炖牛腩": "🍲",
+    "鸡蛋灌饼": "🥞", "蛋煎馒头片": "🍞", "紫菜馄饨": "🥣", "韭菜盒子": "🥟",
     // 饮品
     "碳酸饮料": "🥤", "奶茶": "🧋", "啤酒": "🍺",
     // 零食
@@ -229,7 +231,7 @@
 
   function initCats() {
     const cats = [];
-    FOODS.forEach(function (f) { if (cats.indexOf(f.cat) < 0) cats.push(f.cat); });
+    DB.allFoods().forEach(function (f) { if (cats.indexOf(f.cat) < 0) cats.push(f.cat); });
     el("catSel").innerHTML = '<option value="">全部分类</option>' +
       cats.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join("");
   }
@@ -239,23 +241,29 @@
     const kw = el("foodSearch").value.trim();
     const box = el("foodList");
 
-    const list = FOODS.filter(function (f) {
+    const list = DB.allFoods().filter(function (f) {
       if (cat && f.cat !== cat) return false;
       if (kw && f.name.indexOf(kw) < 0 && (f.note || "").indexOf(kw) < 0) return false;
       return true;
     });
 
-    if (!list.length) {
+    // 搜索有关键词时，自定义菜优先排在前面（自己加的更容易找到）
+    const sorted = kw ? list.slice().sort(function (a, b) {
+      return (b.custom ? 1 : 0) - (a.custom ? 1 : 0);
+    }) : list;
+
+    if (!sorted.length) {
       box.innerHTML = '<div class="empty">没有符合条件的食物</div>';
       return;
     }
 
-    box.innerHTML = list.map(function (f) {
+    box.innerHTML = sorted.map(function (f) {
       const has = inCart(f.id);
       return '<div class="food-card' + (has ? " picked" : "") + '">' +
         '<div class="fc-head">' +
           '<span class="fc-icon">' + foodIcon(f) + '</span>' +
           '<span class="fc-name">' + esc(f.name) + '</span>' +
+          (f.custom ? '<span class="fc-custom">自定</span>' : '') +
           '<span class="fc-kind">' + (KIND_TXT[f.kind] || "") + '</span>' +
           '<button type="button" class="fc-btn' + (has ? " on" : "") + '" data-food="' + f.id + '">' +
             (has ? "已加入" : "+ 加入") + '</button>' +
@@ -298,12 +306,12 @@
     }
 
     box.innerHTML = cart.map(function (c) {
-      const f = FOODS.find(function (x) { return x.id === c.foodId; });
+      const f = DB.allFoods().find(function (x) { return x.id === c.foodId; });
       const icon = f ? foodIcon(f) : (CAT_ICON[c.cat] || "🍽");
       return '<div class="cart-row">' +
         '<div class="cr-left">' +
           '<div class="cr-name"><span class="cr-icon">' + icon + '</span>' + esc(c.name) + '</div>' +
-          '<div class="cr-cat">' + esc(c.cat) + '</div>' +
+          '<div class="cr-cat">' + esc(c.cat) + (c.kind === "cd" ? " · 自定" : "") + '</div>' +
         '</div>' +
         '<button type="button" class="cr-del" data-del="' + c.foodId + '">移出</button>' +
       '</div>';
@@ -335,6 +343,196 @@
   };
 
   /* ======================================================
+     四点五、我的菜谱（自定义菜品管理）
+     ====================================================== */
+  let editingDishId = null;
+  const ROLE_TXT = { protein: "主菜", veg: "素菜", staple: "主食", soup: "汤羹" };
+  const MEAL_TXT = { breakfast: "早", lunch: "午", dinner: "晚" };
+
+  function updateDishNum() {
+    el("dishNum").textContent = loadCustomDishes().length;
+  }
+
+  function renderCustomDishes() {
+    updateDishNum();
+    const list = loadCustomDishes();
+    const box = el("customList");
+
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">还没有添加自定义菜<br>' +
+        '<span class="small">家里常吃的招牌菜、市场现买的熟食都可以加进来</span></div>' +
+        '<div class="empty" style="margin:8px 0 14px"><span class="small">热门速填：</span><div id="quickAddBox" class="chip-group" style="margin-top:8px"></div></div>';
+      renderQuickAdd();
+      return;
+    }
+
+    box.innerHTML = list.map(function (d) {
+      const mealTxt = (d.meal || []).map(function (m) { return MEAL_TXT[m] || m; }).join("·");
+      return '<div class="dish-row">' +
+        '<div class="dr-left">' +
+          '<div class="dr-name">🍽 ' + esc(d.name) + '</div>' +
+          '<div class="dr-tags">' +
+            '<span class="tag">' + (ROLE_TXT[d.role] || d.role) + '</span>' +
+            '<span class="tag">' + mealTxt + '餐</span>' +
+            (d.time ? '<span class="tag">约' + d.time + '分钟</span>' : '') +
+          '</div>' +
+          (d.ing && d.ing.length
+            ? '<div class="dr-note">食材：' + esc(d.ing.map(function (i) { return i.n + (i.a ? " " + i.a + i.u : ""); }).join("、")) + '</div>'
+            : '') +
+          (d.steps && d.steps.length
+            ? '<div class="dr-note">做法：' + esc(d.steps[0]) + (d.steps.length > 1 ? ' 等 ' + d.steps.length + ' 步' : '') + '</div>'
+            : '') +
+          (d.note ? '<div class="dr-note">备注：' + esc(d.note) + '</div>' : '') +
+        '</div>' +
+        '<button type="button" class="mr-edit" data-editdish="' + d.id + '">编辑</button>' +
+      '</div>';
+    }).join("") + '<div class="empty" style="margin:10px 0 4px;color:#a8b0ad;font-size:12px">共 ' + list.length + ' 道自定义菜 · 添加后可在下方「+ 添加一道菜」继续补充</div>';
+  }
+
+  /* 空列表时的热门速填（一键预填常见家常菜） */
+  const QUICK_DISHES = [
+    { name: "青椒炒肉丝", role: "protein", ing: "猪肉 200g、青椒 200g" },
+    { name: "清炒土豆丝", role: "veg", ing: "土豆 300g、干辣椒 2 个" },
+    { name: "葱油拌面", role: "staple", ing: "面条 300g、小葱 20g" },
+    { name: "冬瓜花蛤汤", role: "soup", ing: "冬瓜 300g、花蛤 300g" },
+  ];
+  function renderQuickAdd() {
+    const box = el("quickAddBox");
+    if (!box) return;
+    box.innerHTML = QUICK_DISHES.map(function (q, i) {
+      return '<label class="chip"><input type="button" data-quickdish="' + i + '" value="' + esc(q.name) + '">' +
+        '<span>' + esc(q.name) + '</span></label>';
+    }).join("");
+    box.querySelectorAll("[data-quickdish]").forEach(function (b) {
+      b.onclick = function () {
+        const q = QUICK_DISHES[Number(b.dataset.quickdish)];
+        openDishModal(null, q);
+      };
+    });
+  }
+
+  el("customList").addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-editdish]");
+    if (btn) openDishModal(btn.dataset.editdish);
+  });
+
+  el("addDishBtn").onclick = function () { openDishModal(null); };
+
+  /* 手动输入的食材解析：“牛肉 250g、洋葱1个” → [{n,a,u,c}] */
+  function parseIngText(txt) {
+    if (!txt) return [];
+    return txt.split(/[、，,；;\n]/).map(function (s) {
+      s = s.trim();
+      if (!s) return null;
+      const m = s.match(/^(.+?)\s*([\d.]+)\s*(g|克|ml|毫升|个|只|根|片|朵|把|勺|瓣|块|条|包|罐)?$/);
+      if (m && m[2]) {
+        return { n: m[1].trim(), a: Number(m[2]), u: m[3] || "", c: guessCat(m[1]) };
+      }
+      return { n: s, a: 0, u: "", c: guessCat(s) };
+    }).filter(Boolean);
+  }
+
+  function guessCat(name) {
+    if (/牛|猪|鸡|鸭|羊|排骨|肉/.test(name)) return "肉禽";
+    if (/蛋/.test(name)) return "蛋";
+    if (/鱼|虾|蟹|贝|蚵|蛎|花蛤|鱿鱼/.test(name)) return "水产";
+    if (/豆腐|豆干|豆浆/.test(name)) return "豆制品";
+    if (/面|米|粉|馒头|饼|饺子|馄饨|燕麦/.test(name)) return "主食";
+    if (/菌|菇|木耳|海带|紫菜/.test(name)) return "菌菇干货";
+    if (/枣|枸杞|参|陈皮|茯苓|薏米|姜/.test(name)) return "药食同源";
+    return "蔬菜";
+  }
+
+  function openDishModal(id, prefill) {
+    editingDishId = id || null;
+    const d = id ? loadCustomDishes().find(function (x) { return x.id === id; }) : null;
+    const p = prefill || {};
+
+    el("dishModalTitle").textContent = d ? "编辑菜品" : "添加菜品";
+    el("dName").value = d ? d.name : (p.name || "");
+    el("dRole").value = d ? d.role : (p.role || "protein");
+    el("dTime").value = d && d.time ? d.time : "";
+    el("dNote").value = d ? (d.note || "") : "";
+
+    el("dMeal").querySelectorAll("input").forEach(function (cb) {
+      cb.checked = d ? (d.meal || []).indexOf(cb.value) >= 0 : (cb.value !== "breakfast");
+      cb.closest(".chip").classList.toggle("on", cb.checked);
+    });
+
+    el("dIng").value = d && d.ing && d.ing.length
+      ? d.ing.map(function (i) { return i.n + (i.a ? " " + i.a + i.u : ""); }).join("、")
+      : (p.ing || "");
+    el("dSteps").value = d && d.steps ? d.steps.join("\n") : "";
+
+    el("dishModalDel").classList.toggle("hidden", !d);
+    el("dishModal").classList.remove("hidden");
+  }
+
+  function closeDishModal() {
+    el("dishModal").classList.add("hidden");
+    editingDishId = null;
+  }
+
+  el("dishModalClose").onclick = closeDishModal;
+  el("dishModal").addEventListener("click", function (e) {
+    if (e.target === el("dishModal")) closeDishModal();
+  });
+
+  el("dMeal").addEventListener("change", function (e) {
+    if (e.target.tagName !== "INPUT") return;
+    e.target.closest(".chip").classList.toggle("on", e.target.checked);
+  });
+
+  el("dishModalSave").onclick = function () {
+    const name = el("dName").value.trim();
+    if (!name) { alert("请填写菜名"); return; }
+
+    const meal = [];
+    el("dMeal").querySelectorAll("input:checked").forEach(function (cb) { meal.push(cb.value); });
+    if (!meal.length) { alert("至少勾选一个餐次（早/午/晚）"); return; }
+
+    const dish = {
+      id: editingDishId || "",
+      name: name,
+      meal: meal,
+      role: el("dRole").value,
+      time: Number(el("dTime").value) || 20,
+      ing: parseIngText(el("dIng").value),
+      steps: el("dSteps").value.split("\n").map(function (s) { return s.trim(); }).filter(Boolean),
+      note: el("dNote").value.trim(),
+      natureTxt: "自定",
+    };
+
+    if (editingDishId) {
+      updateCustomDish(dish);
+    } else {
+      const r = addCustomDish(dish);
+      if (!r.ok) { alert(r.msg); return; }
+    }
+
+    // 同步登记到食物库候选（kind 标记 cd，购物车甄选时好识别）
+    closeDishModal();
+    renderCustomDishes();
+    initCats();
+    renderFoods();
+  };
+
+  el("dishModalDel").onclick = function () {
+    if (!editingDishId) return;
+    const d = loadCustomDishes().find(function (x) { return x.id === editingDishId; });
+    if (!confirm("删除「" + (d ? d.name : "这道菜") + "」？删除后不再出现在食物库与周食谱候选里。")) return;
+    deleteCustomDish(editingDishId);
+    // 购物车里若也加过它，一并移出（不然甄选会找不到）
+    removeFromCart(editingDishId);
+    closeDishModal();
+    renderCustomDishes();
+    initCats();
+    renderFoods();
+    renderCart();
+    updateCartNum();
+  };
+
+  /* ======================================================
      五、甄选分析
      ====================================================== */
   const LEVEL = {
@@ -362,7 +560,7 @@
     const members = currentMembers();
 
     const items = cart.map(function (c) {
-      const f = FOODS.find(function (x) { return x.id === c.foodId; });
+      const f = DB.allFoods().find(function (x) { return x.id === c.foodId; });
       if (!f) return null;
       const all = DB.analyzeFood(f, members);
       const per = members.map(function (m) {
@@ -453,6 +651,7 @@
 
   initCats();
   renderMembers();
+  updateDishNum();
   refreshAll();
 
   // 若已有购物车，直接可分析

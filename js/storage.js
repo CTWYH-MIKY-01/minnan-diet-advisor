@@ -9,6 +9,7 @@ const K_PROFILE = "mnd_profile_v2";   // 家庭所在地区等全局设置
 const K_CART = "mnd_cart_v1";         // 食物购物车（想吃的 / 想试的）
 const K_PREFS = "mnd_prefs_v1";       // 菜品偏好（喜欢的菜系/忌口）
 const K_WEEKREQ = "mnd_weekreq_v1";   // 本周要求（某食物每周最多出现几次）
+const K_CUSTOM_DISH = "mnd_customdish_v1";  // 自定义菜品（含成品菜谱，手动添加）
 
 /* ---------- 成员 ---------- */
 function loadMembers() {
@@ -65,7 +66,8 @@ function saveCart(list) {
 function addToCart(foodId, note) {
   const list = loadCart();
   if (list.some(function (x) { return x.foodId === foodId; })) return false;
-  const f = (window.FOODS_DB ? window.FOODS_DB.FOODS : []).find(function (x) { return x.id === foodId; });
+  // 自定义菜在 allFoods() 动态合并里，静态 FOODS 查不到（v22 修复）
+  const f = (window.FOODS_DB ? window.FOODS_DB.allFoods() : []).find(function (x) { return x.id === foodId; });
   if (!f) return false;
   list.push({
     id: "c_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
@@ -115,6 +117,59 @@ function loadWeekRules() {
 function saveWeekRules(list) {
   list = (list || []).filter(function (r) { return r && r.kw; });
   localStorage.setItem(K_WEEKREQ, JSON.stringify(list));
+}
+
+/* ---------- 自定义菜品 ----------
+   结构与 DISHES 的菜一致（id/name/meal/role/tz/ing/steps...），
+   另带 timeadded（默认升序编号，方便排序管理）：
+     { id: "cd_xxx", name, meal:["lunch","dinner"], role:"protein"|"veg"|"staple"|"soup",
+       tz:[...], badTz:[...], ing:[{n,a,u,c}], steps:[...], note, timeadded }
+   手动添加的菜同样参与食谱生成换用与购物分析。 */
+function loadCustomDishes() {
+  try {
+    const list = JSON.parse(localStorage.getItem(K_CUSTOM_DISH));
+    if (!Array.isArray(list)) return [];
+    return list.filter(function (d) { return d && d.id && d.name && d.role; });
+  } catch (e) { return []; }
+}
+function saveCustomDishes(list) {
+  try {
+    localStorage.setItem(K_CUSTOM_DISH, JSON.stringify(list || []));
+  } catch (e) { alert("菜肴保存失败，本地存储空间可能已满"); }
+}
+function addCustomDish(dish) {
+  const list = loadCustomDishes();
+  const name = (dish.name || "").trim();
+  if (!name) return { ok: false, msg: "请填写菜名" };
+  if (list.some(function (x) { return x.name === name; })) {
+    return { ok: false, msg: "已有同名菜「" + name + "」，请换个名字或编辑原菜" };
+  }
+  if (!dish.id) dish.id = "cd_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+  if (!dish.meal || !dish.meal.length) dish.meal = ["lunch", "dinner"];
+  if (!dish.role) dish.role = "protein";
+  dish.tz = dish.tz || [];
+  dish.badTz = dish.badTz || [];
+  dish.ing = dish.ing || [];
+  dish.steps = (dish.steps || []).filter(function (s) { return s && s.trim(); });
+  dish.season = dish.season || ["四季"];
+  dish.servings = 3;
+  dish.time = dish.time || 20;
+  dish.custom = true;
+  list.push(dish);
+  saveCustomDishes(list);
+  return { ok: true, list: list };
+}
+function updateCustomDish(dish) {
+  const list = loadCustomDishes();
+  const idx = list.findIndex(function (x) { return x.id === dish.id; });
+  if (idx < 0) return false;
+  dish.custom = true;
+  list[idx] = dish;
+  saveCustomDishes(list);
+  return true;
+}
+function deleteCustomDish(id) {
+  saveCustomDishes(loadCustomDishes().filter(function (x) { return x.id !== id; }));
 }
 
 /* ---------- 历史方案 ---------- */

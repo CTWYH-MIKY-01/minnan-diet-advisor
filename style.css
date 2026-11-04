@@ -464,4 +464,61 @@ a.link:hover{text-decoration:underline;}
   .modal-foot{display:flex;gap:8px;}
   .modal-foot button{flex:1;margin-top:8px;}
   .modal-foot button.hidden{display:none;}
+  .modal-box textarea{padding:7px 9px;font-size:14.5px;}
+}
+
+/* ======================================================
+   v22 新增：我的菜谱（自定义菜品）+ 换菜候选面板
+   ====================================================== */
+
+/* ---------- 食物库里的「自定」徽标 ---------- */
+.fc-custom{font-size:10.5px;padding:1px 7px;border-radius:8px;flex:0 0 auto;
+  background:#fdf3e0;color:#96702a;border:1px solid #ecd9b0;}
+
+/* ---------- 我的菜谱列表 ---------- */
+#ftab-custom{padding-top:2px;}
+.dish-row{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;
+  border:1px solid #ecdfc2;border-radius:10px;margin-bottom:9px;background:#fdfaf2;}
+.dr-left{flex:1;min-width:0;}
+.dr-name{font-weight:600;font-size:14.5px;color:#6b4d1e;margin-bottom:5px;word-break:break-all;}
+.dr-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px;}
+.dr-tags .tag{background:#fff;border:1px solid #ecdfc2;}
+.dr-note{font-size:12px;color:#96702a;line-height:1.6;word-break:break-all;}
+.dr-note + .dr-note{margin-top:2px;}
+.dish-row .mr-edit{flex:0 0 auto;}
+
+/* ---------- 换菜候选面板（底部滑出） ---------- */
+#swapPanelBox{position:fixed;inset:0;z-index:120;}
+.sw-mask{position:absolute;inset:0;background:rgba(0,0,0,.45);}
+.sw-panel{position:absolute;left:0;right:0;bottom:0;max-height:74vh;overflow-y:auto;
+  background:#fdfcf9;border-radius:16px 16px 0 0;padding:14px 14px 16px;
+  box-shadow:0 -4px 24px rgba(0,0,0,.12);}
+.sw-title{font-size:15px;font-weight:600;color:#2c5f5a;margin-bottom:4px;
+  word-break:break-all;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;}
+.sw-sub{font-size:11.5px;color:#a4b5b2;font-weight:400;}
+.sw-list{display:flex;flex-direction:column;gap:8px;margin:10px 0 12px;}
+.sw-item{width:100%;display:block;margin:0;text-align:left;background:#fff;
+  border:1px solid #eaeae6;border-radius:11px;padding:10px 12px;}
+.sw-item:hover{background:#f7fbfa;border-color:#c8ddd8;}
+.sw-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;}
+.sw-name{font-size:14.5px;font-weight:600;color:#333;flex:1;min-width:0;}
+.sw-lv{font-size:10.5px;padding:1px 7px;border-radius:8px;flex:0 0 auto;white-space:nowrap;}
+.sl-good{background:#e6f4ea;color:#2f7a46;}
+.sl-ok{background:#eef4f2;color:#4a7a70;}
+.sl-caution{background:#fdf3e0;color:#96702a;}
+.sl-bad{background:#fdeaea;color:#a83f3f;}
+.sw-cust{font-size:10.5px;padding:1px 7px;border-radius:8px;flex:0 0 auto;
+  background:#fdf3e0;color:#96702a;border:1px solid #ecd9b0;}
+.sw-used{font-size:10.5px;color:#a4b5b2;flex:0 0 auto;white-space:nowrap;}
+.sw-ing{font-size:12.5px;color:#6a7a78;line-height:1.6;word-break:break-all;}
+.sw-meta{font-size:11.5px;color:#a4b5b2;margin-top:3px;line-height:1.55;word-break:break-all;}
+.sw-close{background:#fff;color:#666;border:1.5px solid #ddd;}
+.sw-close:hover{background:#f4f4f2;}
+
+@media (max-width:400px){
+  .sw-panel{padding:12px 11px 14px;}
+  .sw-item{padding:9px 10px;}
+  .dr-name{font-size:14px;}
+  .dish-row .mr-edit{padding:5px 10px;font-size:12px;}
+  #foodTabs .tab{font-size:11.5px;}
 }

@@ -266,6 +266,15 @@ function buildDay(ctx, dayIdx, used, rand, ruleState) {
   };
 }
 
+/* ---------- 自定义菜合并：把 localStorage 里手动添加的菜并入当天候选池 ---------- */
+function customDishPool() {
+  // storage.js 的 loadCustomDishes 在 menu 页已加载；兜底为空
+  try {
+    if (typeof loadCustomDishes === "function") return loadCustomDishes();
+  } catch (e) {}
+  return [];
+}
+
 /* ---------- 生成一周 ---------- */
 function buildWeek(members, startDate, opts) {
   opts = opts || {};
@@ -281,6 +290,9 @@ function buildWeek(members, startDate, opts) {
   const ruleState = {};  // 本周要求：规则序号 -> 已出现次数
   const weekLabel = [];
 
+  // 自定义菜（手动添加入库的）：每次生成时并入全场池
+  const customs = customDishPool();
+
   for (let i = 0; i < 7; i++) {
     const d = new Date(startDate.getTime() + i * 86400000);
     const jq = JQ.currentJieqi(d);
@@ -291,7 +303,7 @@ function buildWeek(members, startDate, opts) {
       region: region, prefs: prefs, pool: [], weekRules: weekRules,
     };
 
-    ctx.pool = window.DISHES.filter(function (dish) {
+    ctx.pool = window.DISHES.concat(customs).filter(function (dish) {
       return dishAllowed(dish, ctx);
     }).map(function (dish) {
       const copy = Object.assign({}, dish);
@@ -371,6 +383,8 @@ window.ENGINE = {
   mergeDisease: mergeDisease,
   dishAllowed: dishAllowed,
   dishScore: dishScore,
+  allDishes: function () { return window.DISHES.concat(customDishPool()); },
+  customDishPool: customDishPool,
   weekRuleBlocked: weekRuleBlocked,
   weekMatchKeyword: function (dish, kw) {
     return dish.name.indexOf(kw) >= 0 ||

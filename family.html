@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>家人与食物 · 健康饮食调理</title>
 <link rel="icon" type="image/png" href="icon.png">
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
 <div class="container container-wide">
@@ -31,7 +31,8 @@
 
   <div class="tabs" id="foodTabs">
     <button type="button" class="tab active" data-ftab="lib">食物库</button>
-    <button type="button" class="tab" data-ftab="cart">我的购物车 <span id="cartNum">0</span></button>
+    <button type="button" class="tab" data-ftab="custom">我的菜谱 <span id="dishNum">0</span></button>
+    <button type="button" class="tab" data-ftab="cart">购物车 <span id="cartNum">0</span></button>
     <button type="button" class="tab" data-ftab="analyze">甄选分析</button>
   </div>
 
@@ -48,6 +49,13 @@
       </div>
     </div>
     <div id="foodList" class="food-list"></div>
+  </div>
+
+  <!-- 我的菜谱（自定义菜品） -->
+  <div id="ftab-custom" class="tab-pane">
+    <p class="hint" style="margin-top:0">手动添加家里常吃的菜，存入本机后：食物库可搜索、购物车可甄选、周食谱也会自动选用。手动添加的不分体质宜忌，按通用处理。</p>
+    <div id="customList"></div>
+    <button type="button" id="addDishBtn" class="primary">+ 添加一道菜</button>
   </div>
 
   <!-- 购物车 -->
@@ -117,12 +125,74 @@
   </div>
 </div>
 
-<script src="js/storage.js?v=21"></script>
-<script src="js/jieqi.js?v=21"></script>
-<script src="js/rule.js?v=21"></script>
-<script src="js/tcm.js?v=21"></script>
-<script src="js/engine.js?v=21"></script>
-<script src="js/foods.js?v=21"></script>
-<script src="js/page-family.js?v=21"></script>
+<!-- ============ 自定义菜品弹层 ============ -->
+<div id="dishModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span id="dishModalTitle">添加菜品</span>
+      <button type="button" id="dishModalClose" class="x">×</button>
+    </div>
+
+    <div class="form-item">
+      <label>菜名 *</label>
+      <input type="text" id="dName" placeholder="如：妈妈牌红烧肉 / 自制牛肉粄">
+    </div>
+
+    <div class="row2">
+      <div class="form-item">
+        <label>适用餐次（可多选）</label>
+        <div id="dMeal" class="chip-group">
+          <label class="chip"><input type="checkbox" value="breakfast"><span>早餐</span></label>
+          <label class="chip"><input type="checkbox" value="lunch" checked><span>午餐</span></label>
+          <label class="chip"><input type="checkbox" value="dinner" checked><span>晚餐</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="form-item">
+        <label>菜色角色 *</label>
+        <select id="dRole">
+          <option value="protein">主菜（荤/蛋白）</option>
+          <option value="veg">素菜</option>
+          <option value="staple">主食</option>
+          <option value="soup">汤羹</option>
+        </select>
+      </div>
+      <div class="form-item">
+        <label>烹饪时长（分钟，选填）</label>
+        <input type="number" id="dTime" placeholder="约 20" min="1" max="240">
+      </div>
+    </div>
+
+    <div class="form-item">
+      <label>主要食材（选填，用顿号或逗号分隔，如：牛肉 250g、洋葱 1 个）</label>
+      <input type="text" id="dIng" placeholder="用于自动汇总采购清单">
+    </div>
+
+    <div class="form-item">
+      <label>做法步骤（选填，每行一步）</label>
+      <textarea id="dSteps" rows="4" placeholder="第一步……&#10;第二步……"></textarea>
+    </div>
+
+    <div class="form-item">
+      <label>一句话备注（选填）</label>
+      <input type="text" id="dNote" placeholder="如：孩子最爱 / 只在周末做">
+    </div>
+
+    <div class="modal-foot">
+      <button type="button" id="dishModalSave" class="primary">保存这道菜</button>
+      <button type="button" id="dishModalDel" class="ghost-btn hidden">删除这道菜</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/storage.js?v=22"></script>
+<script src="js/jieqi.js?v=22"></script>
+<script src="js/rule.js?v=22"></script>
+<script src="js/tcm.js?v=22"></script>
+<script src="js/engine.js?v=22"></script>
+<script src="js/foods.js?v=22"></script>
+<script src="js/page-family.js?v=22"></script>
 </body>
 </html>

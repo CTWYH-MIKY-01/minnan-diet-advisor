@@ -399,7 +399,12 @@
     if (head) head.parentElement.classList.toggle("open");
   }
 
-  /* ---------- 单菜替换 ---------- */
+  /* ---------- 单菜替换：候选面板 ----------
+     展示同餐次同角色的全部可选菜（含自定义菜），
+     按适配分排序取前 12 个（不少于 5 个），用户点头像/菜名挑；
+     面板里也标出每道菜对本家庭的适配级别，帮助选择 */
+  let swapPanel = null;   // {dayIdx, meal, oldId, list}
+
   function swapDish(dayIdx, meal, oldId) {
     const day = week.days[dayIdx];
     const list = day.menu[meal];
@@ -407,7 +412,7 @@
     if (idx < 0) return;
     const old = list[idx];
 
-    // 候选：同餐次同角色、当前周未被使用的、已通过过滤
+    // 候选：同餐次同角色、当前周未被使用的、已通过过滤（含自定义菜）
     const usedIds = {};
     week.days.forEach(function (dd) {
       dd.menu.all.forEach(function (d) { usedIds[d.id] = 1; });
@@ -422,24 +427,28 @@
     };
     const wr = week.weekRules || [];
 
-    let cands = window.DISHES.filter(function (d) {
+    const allDishes = window.ENGINE.allDishes();
+    let cands = allDishes.filter(function (d) {
       if (d.id === oldId) return false;
-      if (usedIds[d.id]) return false;
+      if (usedIds[d.id] && !d.custom) return false;   // 自定义菜可少量复用
       if (d.role !== old.role) return false;
       if ((d.meal || []).indexOf(meal) < 0) return false;
       return window.ENGINE.dishAllowed(d, ctx);
     });
 
+    // 本周未用过的排前面；自定义菜其次；已用过的最后兜底
+    const fresh = cands.filter(function (d) { return !usedIds[d.id]; });
+    const usedOnes = cands.filter(function (d) { return usedIds[d.id]; });
+
     // 替换也同样遵守本周要求：不算上被换掉的那道，不能让配额超标
-    if (wr.length && cands.length) {
+    function applyWeekRules(arr) {
+      if (!wr.length || !arr.length) return arr;
       const st = {};
-      // 旧菜被换掉，它命中的规则配额随之释放
       const oldHit = {};
       wr.forEach(function (r, ri) {
         const mealOk = !r.meal || r.meal === "all" || r.meal === meal;
         if (mealOk && window.ENGINE.weekMatchKeyword(old, r.kw)) oldHit[ri] = true;
       });
-      // 按规则逐条重数本周已用次数：不限餐次的按全周计，限餐次的只按该餐次计
       wr.forEach(function (r, ri) {
         if (oldHit[ri]) return;
         week.days.forEach(function (dd) {
@@ -449,34 +458,115 @@
           });
         });
       });
-      const okCands = cands.filter(function (d) {
+      const ok = arr.filter(function (d) {
         return !window.ENGINE.weekRuleBlocked(d, meal, wr, st);
       });
-      if (okCands.length) cands = okCands;
+      return ok.length ? ok : arr;   // 全挡光时降级放行
     }
 
-    // 若没有新菜，放宽为「当前餐次同角色任意菜（排除自身）」
-    if (!cands.length) {
-      cands = window.DISHES.filter(function (d) {
+    const pool = applyWeekRules(fresh).concat(
+      applyWeekRules(usedOnes).map(function (d) {
+        const c = Object.assign({}, d); c._used = true; return c;
+      })
+    );
+
+    // 兜底：全空时放宽为「同餐次同角色任意菜（排除自身）」
+    let finalCands = pool;
+    if (!finalCands.length) {
+      finalCands = allDishes.filter(function (d) {
         return d.id !== oldId && d.role === old.role && (d.meal || []).indexOf(meal) >= 0;
-      });
+      }).map(function (d) { const c = Object.assign({}, d); c._used = true; return c; });
     }
 
-    if (!cands.length) { alert("没有可替换的同类型菜品"); return; }
+    if (!finalCands.length) { alert("没有可替换的同类型菜品"); return; }
 
-    // 评分排序取前几名随机
-    const scored = cands.map(function (d) {
-      return { d: d, s: window.ENGINE.dishScore(d, ctx) };
+    // 评分排序：取前 12 个进面板（用户要的"至少 5 套"远超此数则展示 12 个更多选择）
+    const scored = finalCands.map(function (d) {
+      return { d: d, s: window.ENGINE.dishScore(d, ctx) + (d.custom ? 2 : 0) - (d._used ? 40 : 0) };
     }).sort(function (a, b) { return b.s - a.s; });
+    const panelList = scored.slice(0, 12).map(function (x) { return x.d; });
 
-    const pick = scored[Math.floor(Math.random() * Math.min(4, scored.length))].d;
+    // 记录面板状态并渲染
+    swapPanel = { dayIdx: dayIdx, meal: meal, oldId: oldId, list: panelList, idx: idx };
+    renderSwapPanel(old, meal, dayIdx);
+  }
 
-    // 替换
-    list[idx] = pick;
+  /* 适配级别（复用食物库的分析逻辑思路，按体质慢病粗评） */
+  function swapLevel(dish) {
+    const tzAll = week.tizhiAll, disAll = week.diseases;
+    let bad = 0;
+    (dish.badTz || []).forEach(function (t) { if (tzAll.indexOf(t) >= 0) bad++; });
+    const disHit = (dish.badDis || []).some(function (b) { return disAll.indexOf(b) >= 0; });
+    let good = 0;
+    (dish.tz || []).forEach(function (t) { if (tzAll.indexOf(t) >= 0) good++; });
+    if (disHit) return { txt: "慢病注意", cls: "sl-bad" };
+    if (bad >= 2) return { txt: "多人不宜", cls: "sl-bad" };
+    if (bad === 1) return { txt: "个别体质少食", cls: "sl-caution" };
+    if (good >= 2) return { txt: "全家适宜", cls: "sl-good" };
+    return { txt: "可以", cls: "sl-ok" };
+  }
+
+  function renderSwapPanel(old, meal, dayIdx) {
+    // 移除旧面板
+    const prev = document.getElementById("swapPanelBox");
+    if (prev) prev.remove();
+
+    const mealTxt = { breakfast: "早餐", lunch: "午餐", dinner: "晚餐" }[meal] || meal;
+    const dstr = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][dayIdx];
+
+    const items = swapPanel.list.map(function (d) {
+      const lv = swapLevel(d);
+      const ing = (d.ing || []).slice(0, 4).map(function (i) { return i.n; }).join("、");
+      return '<button type="button" class="sw-item" data-pick="' + d.id + '">' +
+        '<div class="sw-head">' +
+          '<span class="sw-name">' + esc(d.name) + '</span>' +
+          '<span class="sw-lv ' + lv.cls + '">' + lv.txt + '</span>' +
+          (d.custom ? '<span class="sw-cust">自定</span>' : '') +
+          (d._used ? '<span class="sw-used">本周已用过</span>' : '') +
+        '</div>' +
+        '<div class="sw-ing">' + (ing ? "主料：" + ing : "家常做法") + '</div>' +
+        '<div class="sw-meta">约 ' + (d.time || 20) + ' 分钟' + (d.why ? ' · ' + d.why.slice(0, 26) + "…" : '') + '</div>' +
+      '</button>';
+    }).join("");
+
+    const box = document.createElement("div");
+    box.id = "swapPanelBox";
+    box.innerHTML = '<div class="sw-mask" data-swp-close="1"></div>' +
+      '<div class="sw-panel">' +
+        '<div class="sw-title">换掉「' + esc(old.name) + '」<span class="sw-sub">' + dstr + " " + mealTxt + ' · 共 ' + swapPanel.list.length + ' 个可选</span></div>' +
+        '<div class="sw-list">' + items + '</div>' +
+        '<button type="button" class="sw-close" data-swp-close="1">不换了，关闭</button>' +
+      '</div>';
+    document.body.appendChild(box);
+
+    box.addEventListener("click", function (e) {
+      if (e.target.closest("[data-swp-close]")) {
+        box.remove();
+        swapPanel = null;
+        return;
+      }
+      const pick = e.target.closest("[data-pick]");
+      if (!pick) return;
+      applySwap(pick.dataset.pick);
+    });
+  }
+
+  function applySwap(newId) {
+    if (!swapPanel) return;
+    const day = week.days[swapPanel.dayIdx];
+    const list = day.menu[swapPanel.meal];
+    const pick = swapPanel.list.find(function (d) { return d.id === newId; });
+    if (!pick) return;
+
+    // 自定义菜换入后补 _score（渲染和采购都用到）
+    if (pick._score === undefined) pick._score = 0;
+
+    list[swapPanel.idx] = pick;
     day.menu.all = day.menu.breakfast.concat(day.menu.lunch, day.menu.dinner);
 
-    // 重渲染
     const scrollY = window.scrollY;
+    document.getElementById("swapPanelBox").remove();
+    swapPanel = null;
     render();
     window.scrollTo(0, scrollY);
   }

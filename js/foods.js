@@ -263,6 +263,33 @@ const FOODS = [
     tz: ["平和", "肾阴虚", "胃寒"], badTz: ["寒湿", "结节体质"], badDis: ["diabetes"], season: ["四季"],
     note: "米饭 + 鱼生/蛋卷。生冷部分胃寒者少食，饭量注意控糖；选熟料款更稳妥。", alt: "寿司（熟食款）" },
 
+  /* ---- v5 补充：家常成品菜谱（常见做法款） ---- */
+  { id: "d017", name: "番茄炒蛋", kind: "dish", cat: "成品菜", nature: "微温·甘酸", meridian: "脾、胃、肝",
+    tz: ["平和", "胃寒", "湿热", "肝郁"], badTz: [], badDis: ["gastritis"], season: ["四季"],
+    note: "国民家常菜。番茄红素经油炒吸收更好；胃酸多者少放番茄。", alt: "" },
+  { id: "d018", name: "青椒牛肉丝", kind: "dish", cat: "成品菜", nature: "平·甘", meridian: "脾、胃",
+    tz: ["平和", "胃寒", "肾阳虚"], badTz: ["湿热"], badDis: ["uric", "hyperlipid"], season: ["四季"],
+    note: "牛肉逆纹切上浆才嫩。高血脂、痛风者限量（每周不超 2 次）。", alt: "青椒炒鸡丝" },
+  { id: "d019", name: "水煮牛肉", kind: "dish", cat: "成品菜", nature: "温·辛甘", meridian: "脾、胃",
+    tz: ["胃寒", "寒湿"], badTz: ["湿热", "肾阴虚"], badDis: ["uric", "hypertension", "gastritis"], season: ["秋", "冬"],
+    note: "红油重盐，家庭版可减辣减油。高血压、痛风、胃病者不宜常吃。", alt: "清汤牛肉" },
+  { id: "d020", name: "萝卜炖牛腩", kind: "dish", cat: "成品菜", nature: "平·甘", meridian: "脾、胃、肺",
+    tz: ["平和", "胃寒"], badTz: ["湿热"], badDis: ["uric", "hyperlipid"], season: ["秋", "冬"],
+    note: "牛腩炖 90 分钟以.上软烂，白萝卜下气消食。痛风者吃肉不喝汤。", alt: "萝卜炖排骨" },
+  { id: "d021", name: "鸡蛋灌饼", kind: "dish", cat: "成品菜", nature: "平·甘", meridian: "脾、胃",
+    tz: ["平和", "胃寒"], badTz: ["湿热"], badDis: ["hyperlipid", "diabetes"], season: ["四季"],
+    note: "面+蛋+油煎。家庭版少油无酱比路边摊好很多，控脂控糖者少吃。", alt: "葱花鸡蛋软饼" },
+  { id: "d022", name: "蛋煎馒头片", kind: "dish", cat: "成品菜", nature: "平·甘", meridian: "脾、胃",
+    tz: ["平和", "胃寒"], badTz: [], badDis: ["diabetes"], season: ["四季"],
+    note: "隔夜馒头翻身吃法，裹蛋液煎。注意精制主食的量，别再配粥。", alt: "全麦馒头" },
+  { id: "d023", name: "紫菜馄饨", kind: "dish", cat: "成品菜", nature: "平·甘咸", meridian: "脾、胃",
+    tz: ["平和", "胃寒"], badTz: ["湿热"], badDis: ["uric"], season: ["四季"],
+    note: "皮薄瘦肉馅的汤面食。痛风者少放虾皮、不喝浓汤底。", alt: "清汤水饺" },
+  { id: "d024", name: "韭菜盒子", kind: "dish", cat: "成品菜", nature: "温·辛甘", meridian: "肝、胃、肾",
+    tz: ["胃寒", "寒湿"], badTz: ["湿热", "肾阴虚", "结节体质", "胃寒"], badDis: ["gastritis"], season: ["春"],
+    note: "春韭最香。但韭菜粗纤维 + 辛温，胃病与湿热者不碰。", alt: "葱花鸡蛋软饼" },
+
+
   /* ============ 九、零食 / 饮品 ============ */
   { id: "s001", name: "碳酸饮料", kind: "drink", cat: "饮品", nature: "凉·甘", meridian: "脾、胃",
     tz: [], badTz: ["胃寒", "寒湿", "肾阳虚", "湿热", "结节体质"], badDis: ["diabetes", "fatty", "hypertension"], season: ["四季"],
@@ -290,10 +317,35 @@ const FOODS = [
     note: "少量可舒缓情绪。但含糖含脂，控糖、胃食管反流者不宜。", alt: "原味坚果" },
 ];
 
-/* 按分类分组（供勾选界面用） */
+/* ---------- 自定义菜（含成品菜谱）合并进食物库 ----------
+   localStorage 里手动添加的菜（storage.js addCustomDish）也会出现在
+   「食物库」列表中，显示「自定」徽标、可加购物车、可参与甄选分析 */
+function customFoodEntries() {
+  try {
+    if (typeof loadCustomDishes === "function") {
+      return loadCustomDishes().map(function (d) {
+        return {
+          id: d.id, name: d.name, kind: "dish", cat: "成品菜",
+          nature: d.natureTxt || "自定", meridian: "自定",
+          tz: d.tz || [], badTz: d.badTz || [], badDis: [],
+          season: d.season || ["四季"],
+          note: d.note || ((d.steps && d.steps.length) ? "自定义菜谱：" + d.steps[0] : "自定义菜品"),
+          alt: "", custom: true,
+        };
+      });
+    }
+  } catch (e) {}
+  return [];
+}
+
+function allFoods() {
+  return FOODS.concat(customFoodEntries());
+}
+
+/* 按分类分组（供勾选界面用）*/
 function foodsByCat() {
   const map = {};
-  FOODS.forEach(function (f) {
+  allFoods().forEach(function (f) {
     if (!map[f.cat]) map[f.cat] = [];
     map[f.cat].push(f);
   });
@@ -348,6 +400,8 @@ function analyzeFood(food, members) {
 
 window.FOODS_DB = {
   FOODS: FOODS,
+  allFoods: allFoods,
+  customFoodEntries: customFoodEntries,
   foodsByCat: foodsByCat,
   analyzeFood: analyzeFood,
 };
